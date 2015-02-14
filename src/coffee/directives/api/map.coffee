@@ -193,8 +193,9 @@ angular.module('uiGmapgoogle-maps.directives.api')
             if attrs.control? and scope.control?
               scope.control.refresh = (maybeCoords) =>
                 return unless _gMap?
-                google.maps.event.trigger _gMap, 'resize' #actually refresh
-                if maybeCoords?.latitude? and maybeCoords?.latitude?
+                if google?.maps?.event?.trigger? and _gMap?
+                  google.maps.event.trigger _gMap, 'resize' #actually refresh
+                if maybeCoords?.latitude? and maybeCoords?.longitude?
                   coords = @getCoords(maybeCoords)
                   if @isTrue(attrs.pan)
                     _gMap.panTo coords
@@ -259,7 +260,10 @@ angular.module('uiGmapgoogle-maps.directives.api')
               scope.$watch toWatch, (newValue,oldValue) ->
                 watchItem = @exp
                 return  if _.isEqual(newValue,oldValue)
-                opts.options = newValue
+                if watchItem == 'options'
+                  opts.options = newValue
+                else
+                  opts.options[watchItem] = newValue
                 _gMap.setOptions opts  if _gMap?
-            , true
+              , true
   ]

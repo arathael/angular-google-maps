@@ -15,15 +15,15 @@ angular.module('uiGmapgoogle-maps.directives.api.models.child')
           child.removeEvents child.externalListeners
           child.removeEvents child.internalListeners
           if child?.gObject
-            child.gMarkerManager.remove child.gObject if child.removeFromManager
+            child.gManager.remove child.gObject if child.removeFromManager
             child.gObject.setMap null
             child.gObject = null
 
-      constructor: (scope, @model, @keys, @gMap, @defaults, @doClick, @gMarkerManager, @doDrawSelf = true,
+      constructor: (scope, @model, @keys, @gMap, @defaults, @doClick, @gManager, @doDrawSelf = true,
         @trackModel = true, @needRedraw = false) ->
         #where @model is a reference to model in the controller scope
         #clonedModel is a copy for comparison
-        @clonedModel = _.clone @model,true
+        @clonedModel = _.extend({},@model)
         @deferred = uiGmapPromise.defer()
         _.each @keys, (v, k) =>
           @[k + 'Key'] = if _.isFunction @keys[k] then @keys[k]() else @keys[k]
@@ -78,7 +78,7 @@ angular.module('uiGmapgoogle-maps.directives.api.models.child')
             @needRedraw = true
 
       updateModel: (model) =>
-        @cloneModel = _.clone(model,true)
+        @clonedModel = _.extend({},model) #changed from _.clone(model, true) eliminates lodash dep (so you can use underscore)
         @setMyScope 'all', model, @model
 
       renderGMarker: (doDraw = true, validCb) ->
@@ -90,9 +90,9 @@ angular.module('uiGmapgoogle-maps.directives.api.models.child')
             return
 
           validCb() if validCb?
-          @gMarkerManager.add @gObject if doDraw and @gObject
+          @gManager.add @gObject if doDraw and @gObject
         else
-          @gMarkerManager.remove @gObject if doDraw and @gObject
+          @gManager.remove @gObject if doDraw and @gObject
 
       setMyScope: (thingThatChanged, model, oldModel = undefined, isInit = false, doDraw = true) =>
         if not model?
@@ -121,7 +121,7 @@ angular.module('uiGmapgoogle-maps.directives.api.models.child')
       maybeSetScopeValue: (scopePropName, model, oldModel, modelKey, evaluate, isInit, gSetter = undefined,
         doDraw = true) =>
           gSetter(@scope, doDraw) if gSetter?
-          @gMarkerManager.draw() if @doDrawSelf and doDraw
+        @gManager.draw() if @doDrawSelf and doDraw
 
       isNotValid: (scope, doCheckGmarker = true) =>
         hasNoGmarker = unless doCheckGmarker then false else @gObject == undefined
@@ -143,10 +143,10 @@ angular.module('uiGmapgoogle-maps.directives.api.models.child')
         return if @isNotValid(scope) or !@gObject?
         @renderGMarker doDraw, =>
           oldValue = @gObject.getIcon()
-          newValue = @getProp 'icon', @model
+          newValue = @getProp @iconKey, @model
           return if  oldValue == newValue
           @gObject.setIcon newValue
-          coords = @getProp 'coords', @model
+          coords = @getProp(@coordsKey, @model)
           @gObject.setPosition @getCoords coords
           @gObject.setVisible @validateCoords coords
 
@@ -157,6 +157,10 @@ angular.module('uiGmapgoogle-maps.directives.api.models.child')
           icon = @getProp @iconKey, @model
           _options = @getProp @optionsKey, @model
           @opts = @createOptions coords, icon, _options
+
+          if @isLabel(@gObject) != @isLabel(@opts) and @gObject?
+            @gManager.remove @gObject
+            @gObject = undefined
 
           #update existing options if it is the same type
           if @gObject?
@@ -178,16 +182,16 @@ angular.module('uiGmapgoogle-maps.directives.api.models.child')
 
           @gObject.key = @id if @id?
 
-        if @gObject and (@gObject.getMap() or @gMarkerManager.type != MarkerManager.type)
+        if @gObject and (@gObject.getMap() or @gManager.type != MarkerManager.type)
           @deferred.resolve @gObject
         else
           return @deferred.reject 'gObject is null' unless @gObject
-          unless @gObject?.getMap() and @gMarkerManager.type == MarkerManager.type
+          unless @gObject?.getMap() and @gManager.type == MarkerManager.type
             $log.debug 'gObject has no map yet'
             @deferred.resolve @gObject
 
         if @model[@fitKey]
-          @gMarkerManager.fit()
+          @gManager.fit()
 
       setLabelOptions: (opts) =>
         opts.labelAnchor = @getLabelPositionPoint opts.labelAnchor

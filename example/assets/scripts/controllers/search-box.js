@@ -24,9 +24,6 @@ angular.module("search-box-example", ['uiGmapgoogle-maps'])
     , function ($scope, $timeout, $log, $http, GoogleMapApi) {
   $log.doLog = true
 
-
-
-
   GoogleMapApi.then(function(maps) {
     maps.visualRefresh = true;
     $scope.defaultBounds = new google.maps.LatLngBounds(
